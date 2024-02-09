@@ -9,6 +9,8 @@ defmodule NodeJS.Worker do
   # All protocol messages start with this string.
   @prefix '__elixirnodejs__UOSBsDUP6bp9IF5__'
 
+  require Logger
+
   @moduledoc """
   A genserver that controls the starting of the node service
   """
@@ -75,7 +77,11 @@ defmodule NodeJS.Worker do
               @prefix ++ protocol_data ->
                 {:ok, protocol_data}
 
-              _ ->
+              [] ->
+                get_response('', timeout)
+
+              message ->
+                Logger.debug(message)
                 get_response('', timeout)
             end
         end
@@ -91,6 +97,14 @@ defmodule NodeJS.Worker do
     else
       data
     end
+  end
+
+  def handle_info({_, {:data, {:eol, message}}}, state) do
+    if message != [] do
+      Logger.debug(message)
+    end
+
+    {:noreply, state}
   end
 
   @doc false
