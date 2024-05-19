@@ -7,7 +7,7 @@ defmodule NodeJS.Worker do
   # This random looking string makes sure that other things writing to
   # stdout do not interfere with the protocol that we rely on here.
   # All protocol messages start with this string.
-  @prefix '__elixirnodejs__UOSBsDUP6bp9IF5__'
+  @prefix ~c"__elixirnodejs__UOSBsDUP6bp9IF5__"
 
   require Logger
 
@@ -54,7 +54,7 @@ defmodule NodeJS.Worker do
         {:spawn_executable, node},
         line: @read_chunk_size,
         env: [
-          {'NODE_PATH', node_path(module_path)},
+          {~c"NODE_PATH", node_path(module_path)},
           {'WRITE_CHUNK_SIZE', String.to_charlist("#{@read_chunk_size}")}
         ],
         args: [node_service_path()]
@@ -112,6 +112,9 @@ defmodule NodeJS.Worker do
       when is_tuple(module) do
     timeout = Keyword.get(opts, :timeout)
     binary = Keyword.get(opts, :binary)
+    store = Keyword.get(opts, :store, false)
+    args = args ++ [%{store: store}]
+
     body = Jason.encode!([Tuple.to_list(module), args])
     Port.command(port, "#{body}\n")
 

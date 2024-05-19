@@ -1,5 +1,6 @@
 const path = require('path')
 const readline = require('readline')
+const store = require('node-global-storage')
 const WRITE_CHUNK_SIZE = parseInt(process.env.WRITE_CHUNK_SIZE, 10)
 
 const PREFIX = "__elixirnodejs__UOSBsDUP6bp9IF5__";
@@ -29,7 +30,8 @@ function requireModuleFunction([modulePath, ...keys]) {
 
 async function callModuleFunction(moduleFunction, args) {
   const fn = requireModuleFunction(moduleFunction)
-  const returnValue = fn(...args)
+  args = withStore ? [...args, { store }] : args.slice(0, args.length - 1)
+  const returnValue = fn(...args, { store })
 
   if (returnValue instanceof Promise) {
     return await returnValue
@@ -57,7 +59,7 @@ async function onLine(string) {
   process.stdout.write("\n")
   process.stdout.write(PREFIX)
   for (let i = 0; i < buffer.length; i += WRITE_CHUNK_SIZE) {
-    let chunk = buffer.slice(i, i + WRITE_CHUNK_SIZE)
+    let chunk = buffer.subarray(i, i + WRITE_CHUNK_SIZE)
 
     process.stdout.write(chunk)
   }

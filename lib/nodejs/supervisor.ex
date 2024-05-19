@@ -29,9 +29,10 @@ defmodule NodeJS.Supervisor do
     Supervisor.stop(__MODULE__)
   end
 
-  defp run_in_transaction(module, args, opts) do
+  defp send_call(module, args, opts) do
     binary = Keyword.get(opts, :binary, false)
     timeout = Keyword.get(opts, :timeout, @timeout)
+    worker = Keyword.get(opts, :worker, nil)
 
     func = fn pid ->
       try do
@@ -45,8 +46,12 @@ defmodule NodeJS.Supervisor do
       end
     end
 
-    pool_name = supervisor_pool(opts)
-    :poolboy.transaction(pool_name, func, timeout)
+    if worker do
+      func.(worker)
+    else
+      pool_name = supervisor_pool(opts)
+      :poolboy.transaction(pool_name, func, timeout)
+    end
   end
 
   defp supervisor_name(opts) do
@@ -61,13 +66,20 @@ defmodule NodeJS.Supervisor do
 
   def call(module, args \\ [], opts \\ [])
 
-  def call(module, args, opts) when is_bitstring(module), do: call({module}, args, opts)
+  def call(module, args, opts) when is_bitstring(module),
+    do: call({module}, args, opts)
 
   def call(module, args, opts) when is_tuple(module) and is_list(args) do
+    worker = Keyword.get(opts, :worker, nil)
+
     try do
-      run_in_transaction(module, args, opts)
+      send_call(module, args, opts)
     catch
       :exit, {:timeout, _} ->
+        if worker do
+          checkin(worker, opts)
+        end
+
         {:error, "Call timed out."}
     end
   end
@@ -79,6 +91,18 @@ defmodule NodeJS.Supervisor do
       {:ok, result} -> result
       {:error, message} -> raise NodeJS.Error, message: message
     end
+  end
+
+  @doc "Get pid of worker"
+  def checkout(opts) do
+    timeout = Keyword.get(opts, :timeout, 5000)
+    pool_name = supervisor_pool(opts)
+    :poolboy.checkout(pool_name, true, timeout)
+  end
+
+  def checkin(worker, opts) do
+    pool_name = supervisor_pool(opts)
+    :poolboy.checkin(pool_name, worker)
   end
 
   # --- Supervisor Callbacks ---
