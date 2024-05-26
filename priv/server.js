@@ -30,6 +30,7 @@ function requireModuleFunction([modulePath, ...keys]) {
 
 async function callModuleFunction(moduleFunction, args) {
   const fn = requireModuleFunction(moduleFunction)
+  const { store: withStore } = args[args.length - 1] || {}
   args = withStore ? [...args, { store }] : args.slice(0, args.length - 1)
   const returnValue = fn(...args, { store })
 
